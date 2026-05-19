@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import './DashboardPage.css';
 
-const API = 'http://localhost:5000';
+const API = '';
 
 function StatCard({ label, value, icon, color }) {
   return (

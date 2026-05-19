@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import './AnalyticsPage.css';
 
-const API = 'http://localhost:5000';
+const API = '';
 
 const TOPIC_COLORS = [
   '#0d7377', '#14a085', '#d4a017', '#8b5e3c', '#1e6b4e', '#2d7a3e',

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import './AddBookPage.css';
 
-const API = 'http://localhost:5000';
+const API = '';
 
 const TOPICS = [
   'Nahu', 'Sarf', 'Balaagah', 'Mantiq',
