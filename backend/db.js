@@ -53,4 +53,10 @@ db.exec(`
   );
 `);
 
+// Add publisher column if it doesn't exist (migration)
+const cols = db.prepare("PRAGMA table_info(books)").all().map(c => c.name);
+if (!cols.includes('publisher')) {
+  db.exec('ALTER TABLE books ADD COLUMN publisher TEXT');
+}
+
 module.exports = db;

@@ -113,6 +113,7 @@ function BookDetailPage() {
       title: book.title,
       author_name: book.author_name || '',
       author_death_date: book.author_death_date || '',
+      publisher: book.publisher || '',
       language: book.language || '',
       topic: book.topic || '',
       total_pages: book.total_pages || '',
@@ -128,7 +129,8 @@ function BookDetailPage() {
     try {
       const payload = {
         ...editForm,
-        total_pages: editForm.total_pages ? parseInt(editForm.total_pages, 10) : null
+        total_pages: editForm.total_pages ? parseInt(editForm.total_pages, 10) : null,
+        publisher: editForm.publisher || null
       };
       const res = await axios.put(`${API}/api/books/${id}`, payload);
       setBook(res.data.book);
@@ -185,6 +187,12 @@ function BookDetailPage() {
                   onChange={e => setEditForm({ ...editForm, author_death_date: e.target.value })}
                   placeholder="e.g. 672 AH" />
               </div>
+            </div>
+            <div className="form-group">
+              <label>Publisher</label>
+              <input type="text" value={editForm.publisher}
+                onChange={e => setEditForm({ ...editForm, publisher: e.target.value })}
+                placeholder="e.g. Dar al-Kutub al-Ilmiyyah" />
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -259,6 +267,10 @@ function BookDetailPage() {
               {book.author_name && <span>{book.author_name}</span>}
               {book.author_death_date && <span className="death-date"> (d. {book.author_death_date})</span>}
             </div>
+          )}
+
+          {book.publisher && (
+            <div className="book-publisher">Published by {book.publisher}</div>
           )}
 
           {percent !== null && (

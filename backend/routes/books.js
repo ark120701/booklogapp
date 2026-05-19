@@ -30,7 +30,7 @@ router.get('/', (req, res) => {
 
 // POST /api/books — create book
 router.post('/', (req, res) => {
-  const { title, author_name, author_death_date, language, topic, total_pages, status } = req.body;
+  const { title, author_name, author_death_date, language, topic, total_pages, status, publisher } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
@@ -38,8 +38,8 @@ router.post('/', (req, res) => {
 
   try {
     const result = db.prepare(`
-      INSERT INTO books (user_id, title, author_name, author_death_date, language, topic, total_pages, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO books (user_id, title, author_name, author_death_date, language, topic, total_pages, status, publisher)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       req.user.id,
       title,
@@ -48,7 +48,8 @@ router.post('/', (req, res) => {
       language || null,
       topic || null,
       total_pages || null,
-      status || 'in_progress'
+      status || 'in_progress',
+      publisher || null
     );
 
     const book = db.prepare('SELECT * FROM books WHERE id = ?').get(result.lastInsertRowid);
@@ -82,7 +83,7 @@ router.get('/:id', (req, res) => {
 
 // PUT /api/books/:id — update book
 router.put('/:id', (req, res) => {
-  const { title, author_name, author_death_date, language, topic, total_pages, status } = req.body;
+  const { title, author_name, author_death_date, language, topic, total_pages, status, publisher } = req.body;
 
   try {
     const book = db.prepare('SELECT * FROM books WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
@@ -98,7 +99,8 @@ router.put('/:id', (req, res) => {
         language = ?,
         topic = ?,
         total_pages = ?,
-        status = ?
+        status = ?,
+        publisher = ?
       WHERE id = ? AND user_id = ?
     `).run(
       title || book.title,
@@ -108,6 +110,7 @@ router.put('/:id', (req, res) => {
       topic !== undefined ? topic : book.topic,
       total_pages !== undefined ? total_pages : book.total_pages,
       status || book.status,
+      publisher !== undefined ? publisher : book.publisher,
       req.params.id,
       req.user.id
     );

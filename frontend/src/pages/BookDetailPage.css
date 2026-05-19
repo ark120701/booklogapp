@@ -14,7 +14,8 @@
 .book-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .book-actions { display: flex; gap: 0.5rem; }
 .book-title { font-size: 1.6rem; margin-bottom: 0.4rem; }
-.book-author { color: var(--text-light); font-size: 0.95rem; margin-bottom: 1rem; }
+.book-author { color: var(--text-light); font-size: 0.95rem; margin-bottom: 0.25rem; }
+.book-publisher { color: var(--text-light); font-size: 0.85rem; margin-bottom: 1rem; font-style: italic; }
 .death-date { color: var(--text-light); font-size: 0.875rem; }
 
 .book-progress-section { margin: 1.25rem 0; }

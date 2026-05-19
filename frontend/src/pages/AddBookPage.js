@@ -18,7 +18,7 @@ const LANGUAGES = ['Arabic', 'English', 'Urdu', 'Persian', 'Turkish', 'French', 
 function AddBookPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    title: '', author_name: '', author_death_date: '',
+    title: '', author_name: '', author_death_date: '', publisher: '',
     language: '', topic: '', total_pages: '', volumes: '1', status: 'in_progress'
   });
   const [error, setError] = useState('');
@@ -36,6 +36,7 @@ function AddBookPage() {
       const base = {
         author_name: form.author_name,
         author_death_date: form.author_death_date,
+        publisher: form.publisher,
         language: form.language,
         topic: form.topic,
         total_pages: form.total_pages ? parseInt(form.total_pages, 10) : null,
@@ -91,6 +92,14 @@ function AddBookPage() {
                 onChange={handleChange} placeholder="e.g. 672 AH or 1274 CE"
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label>Publisher</label>
+            <input
+              type="text" name="publisher" value={form.publisher}
+              onChange={handleChange} placeholder="e.g. Dar al-Kutub al-Ilmiyyah"
+            />
           </div>
 
           <div className="form-row">
