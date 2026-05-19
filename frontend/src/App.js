@@ -9,6 +9,8 @@ import BooksPage from './pages/BooksPage';
 import BookDetailPage from './pages/BookDetailPage';
 import AddBookPage from './pages/AddBookPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import OfflineBanner from './components/OfflineBanner';
+import InstallPrompt from './components/InstallPrompt';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -82,6 +84,8 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <OfflineBanner />
+        <InstallPrompt />
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { addToOfflineQueue } from '../utils/offlineQueue';
 import './BookDetailPage.css';
 
 const API = '';
@@ -48,6 +50,8 @@ function BookDetailPage() {
   const [sessionError, setSessionError] = useState('');
   const [sessionLoading, setSessionLoading] = useState(false);
 
+  const isOnline = useOnlineStatus();
+
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
@@ -85,13 +89,21 @@ function BookDetailPage() {
     }
     setSessionError('');
     setSessionLoading(true);
+
+    const payload = { date: session.date, from_page: from, to_page: to, notes: session.notes || null };
+
+    if (!isOnline) {
+      addToOfflineQueue({ url: `/api/books/${id}/sessions`, method: 'POST', body: payload });
+      setSession({ date: today(), from_page: '', to_page: '', notes: '' });
+      setShowSessionForm(false);
+      setSessionLoading(false);
+      setSessionError('');
+      alert('You\'re offline — session saved locally and will sync when you reconnect.');
+      return;
+    }
+
     try {
-      await axios.post(`${API}/api/books/${id}/sessions`, {
-        date: session.date,
-        from_page: from,
-        to_page: to,
-        notes: session.notes || null
-      });
+      await axios.post(`${API}/api/books/${id}/sessions`, payload);
       setSession({ date: today(), from_page: '', to_page: '', notes: '' });
       setShowSessionForm(false);
       fetchBook();
