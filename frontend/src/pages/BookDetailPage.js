@@ -63,7 +63,7 @@ function BookDetailPage() {
     }
   };
 
-  useEffect(() => { fetchBook(); }, [id]);
+  useEffect(() => { fetchBook(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSessionChange = e => setSession({ ...session, [e.target.name]: e.target.value });
 
