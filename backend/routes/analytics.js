@@ -1,74 +1,51 @@
 const express = require('express');
-const db = require('../db');
+const { pool } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
-
 router.use(authenticateToken);
 
 // GET /api/analytics/overview
-router.get('/overview', (req, res) => {
+router.get('/overview', async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const totalBooks = db.prepare('SELECT COUNT(*) as count FROM books WHERE user_id = ?').get(userId);
-    const completedBooks = db.prepare("SELECT COUNT(*) as count FROM books WHERE user_id = ? AND status = 'completed'").get(userId);
-    const inProgressBooks = db.prepare("SELECT COUNT(*) as count FROM books WHERE user_id = ? AND status = 'in_progress'").get(userId);
+    const [totalRes, completedRes, inProgressRes, pagesRes, topicRes, langRes, streakRes] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int as count FROM books WHERE user_id = $1', [userId]),
+      pool.query("SELECT COUNT(*)::int as count FROM books WHERE user_id = $1 AND status = 'completed'", [userId]),
+      pool.query("SELECT COUNT(*)::int as count FROM books WHERE user_id = $1 AND status = 'in_progress'", [userId]),
+      pool.query('SELECT COALESCE(SUM(pages_read), 0)::int as total FROM reading_sessions WHERE user_id = $1', [userId]),
+      pool.query(`SELECT topic, COUNT(*)::int as count FROM books WHERE user_id = $1 AND topic IS NOT NULL GROUP BY topic ORDER BY count DESC`, [userId]),
+      pool.query(`SELECT language, COUNT(*)::int as count FROM books WHERE user_id = $1 AND language IS NOT NULL GROUP BY language ORDER BY count DESC`, [userId]),
+      pool.query(`SELECT DISTINCT date::text FROM reading_sessions WHERE user_id = $1 ORDER BY date DESC`, [userId])
+    ]);
 
-    const totalPagesRow = db.prepare('SELECT COALESCE(SUM(pages_read), 0) as total FROM reading_sessions WHERE user_id = ?').get(userId);
-
-    const booksByTopic = db.prepare(`
-      SELECT topic, COUNT(*) as count
-      FROM books
-      WHERE user_id = ? AND topic IS NOT NULL
-      GROUP BY topic
-      ORDER BY count DESC
-    `).all(userId);
-
-    const booksByLanguage = db.prepare(`
-      SELECT language, COUNT(*) as count
-      FROM books
-      WHERE user_id = ? AND language IS NOT NULL
-      GROUP BY language
-      ORDER BY count DESC
-    `).all(userId);
-
-    // Calculate reading streak
-    const sessionDates = db.prepare(`
-      SELECT DISTINCT date
-      FROM reading_sessions
-      WHERE user_id = ?
-      ORDER BY date DESC
-    `).all(userId).map(r => r.date);
-
+    // Calculate streak
+    const sessionDates = streakRes.rows.map(r => r.date);
     let streak = 0;
     if (sessionDates.length > 0) {
       const today = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
       if (sessionDates[0] === today || sessionDates[0] === yesterday) {
         streak = 1;
         let checkDate = new Date(sessionDates[0]);
         for (let i = 1; i < sessionDates.length; i++) {
           checkDate.setDate(checkDate.getDate() - 1);
           const expected = checkDate.toISOString().split('T')[0];
-          if (sessionDates[i] === expected) {
-            streak++;
-          } else {
-            break;
-          }
+          if (sessionDates[i] === expected) streak++;
+          else break;
         }
       }
     }
 
     res.json({
-      totalBooks: totalBooks.count,
-      completedBooks: completedBooks.count,
-      inProgressBooks: inProgressBooks.count,
-      totalPages: totalPagesRow.total,
+      totalBooks: totalRes.rows[0].count,
+      completedBooks: completedRes.rows[0].count,
+      inProgressBooks: inProgressRes.rows[0].count,
+      totalPages: pagesRes.rows[0].total,
       streak,
-      booksByTopic,
-      booksByLanguage
+      booksByTopic: topicRes.rows,
+      booksByLanguage: langRes.rows
     });
   } catch (err) {
     console.error('Analytics overview error:', err);
@@ -76,86 +53,71 @@ router.get('/overview', (req, res) => {
   }
 });
 
-// GET /api/analytics/daily — pages read per day (last 30 days)
-router.get('/daily', (req, res) => {
+// GET /api/analytics/daily — pages per day, last 30 days
+router.get('/daily', async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const rows = db.prepare(`
-      SELECT date, SUM(pages_read) as pages
+    const result = await pool.query(`
+      SELECT date::text, SUM(pages_read)::int as pages
       FROM reading_sessions
-      WHERE user_id = ?
-        AND date >= date('now', '-29 days')
+      WHERE user_id = $1
+        AND date >= CURRENT_DATE - INTERVAL '29 days'
       GROUP BY date
       ORDER BY date ASC
-    `).all(userId);
+    `, [req.user.id]);
 
-    // Fill in missing days with 0
-    const result = [];
+    const rows = result.rows;
+    const daily = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
       const found = rows.find(r => r.date === d);
-      result.push({ date: d, pages: found ? found.pages : 0 });
+      daily.push({ date: d, pages: found ? found.pages : 0 });
     }
-
-    res.json({ daily: result });
+    res.json({ daily });
   } catch (err) {
     console.error('Analytics daily error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /api/analytics/topics — breakdown by topic
-router.get('/topics', (req, res) => {
+// GET /api/analytics/topics
+router.get('/topics', async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const topicStats = db.prepare(`
-      SELECT
-        b.topic,
-        COUNT(DISTINCT b.id) as book_count,
-        COALESCE(SUM(rs.pages_read), 0) as total_pages
+    const result = await pool.query(`
+      SELECT b.topic,
+        COUNT(DISTINCT b.id)::int as book_count,
+        COALESCE(SUM(rs.pages_read), 0)::int as total_pages
       FROM books b
       LEFT JOIN reading_sessions rs ON rs.book_id = b.id
-      WHERE b.user_id = ?
+      WHERE b.user_id = $1
       GROUP BY b.topic
       ORDER BY book_count DESC
-    `).all(userId);
-
-    res.json({ topics: topicStats });
+    `, [req.user.id]);
+    res.json({ topics: result.rows });
   } catch (err) {
     console.error('Analytics topics error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /api/analytics/progress — per-book progress percentages
-router.get('/progress', (req, res) => {
+// GET /api/analytics/progress
+router.get('/progress', async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const books = db.prepare(`
-      SELECT
-        b.id,
-        b.title,
-        b.total_pages,
-        b.status,
-        b.topic,
-        COALESCE(SUM(rs.pages_read), 0) as pages_read
+    const result = await pool.query(`
+      SELECT b.id, b.title, b.total_pages, b.status, b.topic,
+        COALESCE(SUM(rs.pages_read), 0)::int as pages_read
       FROM books b
       LEFT JOIN reading_sessions rs ON rs.book_id = b.id
-      WHERE b.user_id = ?
+      WHERE b.user_id = $1
       GROUP BY b.id
       ORDER BY b.created_at DESC
-    `).all(userId);
+    `, [req.user.id]);
 
-    const progress = books.map(book => ({
+    const progress = result.rows.map(book => ({
       ...book,
       progress_percent: book.total_pages
         ? Math.min(100, Math.round((book.pages_read / book.total_pages) * 100))
         : null
     }));
-
     res.json({ progress });
   } catch (err) {
     console.error('Analytics progress error:', err);
