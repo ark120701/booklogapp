@@ -1,0 +1,10 @@
+.add-book-page { max-width: 680px; }
+.add-book-card { padding: 2rem; }
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
