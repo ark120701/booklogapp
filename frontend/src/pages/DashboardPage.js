@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import NotificationSetup from '../components/NotificationSetup';
 import './DashboardPage.css';
 
 const API = '';
@@ -86,7 +87,7 @@ function DashboardPage() {
       </div>
 
       {error && <div className="error-message">{error}</div>}
-
+      <NotificationSetup />
       {overview && (
         <div className="stats-grid">
           <StatCard

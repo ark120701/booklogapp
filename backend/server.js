@@ -16,6 +16,7 @@ require('./db');
 const authRoutes = require('./routes/auth');
 const booksRoutes = require('./routes/books');
 const analyticsRoutes = require('./routes/analytics');
+const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/books', booksRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -51,4 +53,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Maktaba backend running on port ${PORT}`);
+  require('./scheduler');
 });

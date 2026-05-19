@@ -62,4 +62,22 @@ if (!cols.includes('parent_id')) {
   db.exec('ALTER TABLE books ADD COLUMN parent_id INTEGER REFERENCES books(id) ON DELETE CASCADE');
 }
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    subscription TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS notification_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE NOT NULL,
+    enabled INTEGER DEFAULT 1,
+    reminder_hour INTEGER DEFAULT 8,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+`);
+
 module.exports = db;

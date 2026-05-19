@@ -1,0 +1,17 @@
+.notification-setup {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border-left: 3px solid var(--gold);
+}
+.notification-header { margin-bottom: 1rem; }
+.notification-header h3 { font-size: 1rem; margin-bottom: 0.2rem; }
+.notification-header p { font-size: 0.85rem; color: var(--text-light); }
+.notification-controls { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.reminder-time { display: flex; align-items: center; gap: 0.6rem; font-size: 0.875rem; }
+.reminder-time label { color: var(--text-light); white-space: nowrap; }
+.reminder-time select {
+  padding: 0.4rem 0.7rem; border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 0.875rem; background: var(--cream);
+}
+.notification-actions { display: flex; gap: 0.5rem; }
+.notification-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--teal); }
