@@ -8,3 +8,17 @@
   padding-top: 1.5rem;
   border-top: 1px solid var(--border);
 }
+.label-hint {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  font-weight: 400;
+}
+.volumes-preview {
+  background: rgba(13, 115, 119, 0.07);
+  border: 1px solid rgba(13, 115, 119, 0.2);
+  border-radius: var(--radius);
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  color: var(--teal-dark);
+  margin-bottom: 1.2rem;
+}

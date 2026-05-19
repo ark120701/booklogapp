@@ -19,7 +19,7 @@ function AddBookPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     title: '', author_name: '', author_death_date: '',
-    language: '', topic: '', total_pages: '', status: 'in_progress'
+    language: '', topic: '', total_pages: '', volumes: '1', status: 'in_progress'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,13 +31,26 @@ function AddBookPage() {
     if (!form.title.trim()) { setError('Title is required.'); return; }
     setError('');
     setLoading(true);
+    const volumes = Math.max(1, parseInt(form.volumes, 10) || 1);
     try {
-      const payload = {
-        ...form,
-        total_pages: form.total_pages ? parseInt(form.total_pages, 10) : null
+      const base = {
+        author_name: form.author_name,
+        author_death_date: form.author_death_date,
+        language: form.language,
+        topic: form.topic,
+        total_pages: form.total_pages ? parseInt(form.total_pages, 10) : null,
+        status: form.status
       };
-      const res = await axios.post(`${API}/api/books`, payload);
-      navigate(`/books/${res.data.book.id}`);
+      if (volumes === 1) {
+        const res = await axios.post(`${API}/api/books`, { ...base, title: form.title });
+        navigate(`/books/${res.data.book.id}`);
+      } else {
+        const requests = Array.from({ length: volumes }, (_, i) =>
+          axios.post(`${API}/api/books`, { ...base, title: `${form.title} — Vol. ${i + 1}` })
+        );
+        await Promise.all(requests);
+        navigate('/books');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add book.');
     } finally {
@@ -99,12 +112,28 @@ function AddBookPage() {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Total Pages</label>
+              <label>Total Pages <span className="label-hint">(per volume)</span></label>
               <input
                 type="number" name="total_pages" value={form.total_pages}
                 onChange={handleChange} placeholder="e.g. 320" min="1"
               />
             </div>
+            <div className="form-group">
+              <label>Number of Volumes</label>
+              <input
+                type="number" name="volumes" value={form.volumes}
+                onChange={handleChange} placeholder="e.g. 3" min="1" max="50"
+              />
+            </div>
+          </div>
+
+          {parseInt(form.volumes, 10) > 1 && (
+            <div className="volumes-preview">
+              Will create {form.volumes} separate books: <strong>{form.title || 'Book'} — Vol. 1</strong> through <strong>Vol. {form.volumes}</strong>
+            </div>
+          )}
+
+          <div className="form-row">
             <div className="form-group">
               <label>Status</label>
               <select name="status" value={form.status} onChange={handleChange}>
