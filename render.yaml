@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: maktaba
+    env: node
+    buildCommand: npm run build
+    startCommand: node backend/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: maktaba-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_MAILTO
+        value: mailto:maktaba@example.com
+
+databases:
+  - name: maktaba-db
+    databaseName: maktaba
+    user: maktaba
