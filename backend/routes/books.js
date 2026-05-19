@@ -7,16 +7,17 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateToken);
 
-// GET /api/books — list user's books
+// GET /api/books — list user's top-level books (excludes volumes)
 router.get('/', (req, res) => {
   try {
     const books = db.prepare(`
       SELECT b.*,
         COALESCE(SUM(rs.pages_read), 0) as pages_read_total,
-        COUNT(rs.id) as session_count
+        COUNT(DISTINCT rs.id) as session_count,
+        (SELECT COUNT(*) FROM books v WHERE v.parent_id = b.id) as volume_count
       FROM books b
       LEFT JOIN reading_sessions rs ON rs.book_id = b.id
-      WHERE b.user_id = ?
+      WHERE b.user_id = ? AND b.parent_id IS NULL
       GROUP BY b.id
       ORDER BY b.created_at DESC
     `).all(req.user.id);
@@ -30,7 +31,7 @@ router.get('/', (req, res) => {
 
 // POST /api/books — create book
 router.post('/', (req, res) => {
-  const { title, author_name, author_death_date, language, topic, total_pages, status, publisher } = req.body;
+  const { title, author_name, author_death_date, language, topic, total_pages, status, publisher, parent_id } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
@@ -38,8 +39,8 @@ router.post('/', (req, res) => {
 
   try {
     const result = db.prepare(`
-      INSERT INTO books (user_id, title, author_name, author_death_date, language, topic, total_pages, status, publisher)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO books (user_id, title, author_name, author_death_date, language, topic, total_pages, status, publisher, parent_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       req.user.id,
       title,
@@ -49,7 +50,8 @@ router.post('/', (req, res) => {
       topic || null,
       total_pages || null,
       status || 'in_progress',
-      publisher || null
+      publisher || null,
+      parent_id || null
     );
 
     const book = db.prepare('SELECT * FROM books WHERE id = ?').get(result.lastInsertRowid);
@@ -60,7 +62,7 @@ router.post('/', (req, res) => {
   }
 });
 
-// GET /api/books/:id — get book with reading sessions
+// GET /api/books/:id — get book with volumes (if series) or sessions (if standalone/volume)
 router.get('/:id', (req, res) => {
   try {
     const book = db.prepare('SELECT * FROM books WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
@@ -68,13 +70,37 @@ router.get('/:id', (req, res) => {
       return res.status(404).json({ error: 'Book not found' });
     }
 
+    // Get volumes if this is a series
+    const volumes = db.prepare(`
+      SELECT b.*,
+        COALESCE(SUM(rs.pages_read), 0) as pages_read_total,
+        COUNT(rs.id) as session_count
+      FROM books b
+      LEFT JOIN reading_sessions rs ON rs.book_id = b.id
+      WHERE b.parent_id = ?
+      GROUP BY b.id
+      ORDER BY b.title ASC
+    `).all(req.params.id);
+
+    // Get sessions for standalone/volume books
     const sessions = db.prepare(
       'SELECT * FROM reading_sessions WHERE book_id = ? ORDER BY date DESC, created_at DESC'
     ).all(req.params.id);
 
     const totalPagesRead = sessions.reduce((sum, s) => sum + s.pages_read, 0);
 
-    res.json({ book: { ...book, pages_read_total: totalPagesRead }, sessions });
+    // Get parent series info if this is a volume
+    let parent = null;
+    if (book.parent_id) {
+      parent = db.prepare('SELECT id, title FROM books WHERE id = ?').get(book.parent_id);
+    }
+
+    res.json({
+      book: { ...book, pages_read_total: totalPagesRead, volume_count: volumes.length },
+      sessions,
+      volumes,
+      parent
+    });
   } catch (err) {
     console.error('Get book error:', err);
     res.status(500).json({ error: 'Internal server error' });

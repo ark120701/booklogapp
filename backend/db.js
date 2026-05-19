@@ -53,10 +53,13 @@ db.exec(`
   );
 `);
 
-// Add publisher column if it doesn't exist (migration)
+// Migrations — add new columns if they don't exist
 const cols = db.prepare("PRAGMA table_info(books)").all().map(c => c.name);
 if (!cols.includes('publisher')) {
   db.exec('ALTER TABLE books ADD COLUMN publisher TEXT');
+}
+if (!cols.includes('parent_id')) {
+  db.exec('ALTER TABLE books ADD COLUMN parent_id INTEGER REFERENCES books(id) ON DELETE CASCADE');
 }
 
 module.exports = db;

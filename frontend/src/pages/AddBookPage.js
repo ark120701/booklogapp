@@ -46,11 +46,22 @@ function AddBookPage() {
         const res = await axios.post(`${API}/api/books`, { ...base, title: form.title });
         navigate(`/books/${res.data.book.id}`);
       } else {
-        const requests = Array.from({ length: volumes }, (_, i) =>
-          axios.post(`${API}/api/books`, { ...base, title: `${form.title} — Vol. ${i + 1}` })
+        // Create the series folder first, then individual volumes inside it
+        const seriesRes = await axios.post(`${API}/api/books`, {
+          ...base,
+          title: form.title,
+          total_pages: null
+        });
+        const seriesId = seriesRes.data.book.id;
+        const volRequests = Array.from({ length: volumes }, (_, i) =>
+          axios.post(`${API}/api/books`, {
+            ...base,
+            title: `${form.title} — Vol. ${i + 1}`,
+            parent_id: seriesId
+          })
         );
-        await Promise.all(requests);
-        navigate('/books');
+        await Promise.all(volRequests);
+        navigate(`/books/${seriesId}`);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add book.');

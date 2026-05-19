@@ -98,6 +98,27 @@
   color: #7c5c00;
 }
 
+.series-badge {
+  background: rgba(92, 61, 143, 0.12);
+  color: #5c3d8f;
+  font-size: 0.75rem;
+}
+
+.book-card-series {
+  border-left: 3px solid #5c3d8f;
+}
+
+.book-card-series:hover {
+  border-color: #5c3d8f;
+}
+
+.series-hint {
+  font-size: 0.78rem;
+  color: var(--text-light);
+  font-style: italic;
+  margin: 0;
+}
+
 .status-badge {
   font-size: 0.7rem;
   text-transform: capitalize;

@@ -38,6 +38,8 @@ function BookDetailPage() {
   const navigate = useNavigate();
   const [book, setBook] = useState(null);
   const [sessions, setSessions] = useState([]);
+  const [volumes, setVolumes] = useState([]);
+  const [parent, setParent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -56,6 +58,8 @@ function BookDetailPage() {
       const res = await axios.get(`${API}/api/books/${id}`);
       setBook(res.data.book);
       setSessions(res.data.sessions || []);
+      setVolumes(res.data.volumes || []);
+      setParent(res.data.parent || null);
     } catch {
       setError('Book not found.');
     } finally {
@@ -162,7 +166,10 @@ function BookDetailPage() {
   return (
     <div className="container book-detail-page">
       <div className="back-link">
-        <Link to="/books">← Back to Books</Link>
+        {parent
+          ? <Link to={`/books/${parent.id}`}>← Back to {parent.title}</Link>
+          : <Link to="/books">← Back to Books</Link>
+        }
       </div>
 
       {editing ? (
@@ -284,104 +291,152 @@ function BookDetailPage() {
           )}
 
           <div className="book-stats-row">
-            <div className="book-stat">
-              <span className="book-stat-val">{totalRead.toLocaleString()}</span>
-              <span className="book-stat-lbl">Pages Read</span>
-            </div>
-            <div className="book-stat">
-              <span className="book-stat-val">{sessions.length}</span>
-              <span className="book-stat-lbl">Sessions</span>
-            </div>
-            {book.total_pages && (
+            {volumes.length > 0 ? (
               <div className="book-stat">
-                <span className="book-stat-val">{book.total_pages.toLocaleString()}</span>
-                <span className="book-stat-lbl">Total Pages</span>
+                <span className="book-stat-val">{volumes.length}</span>
+                <span className="book-stat-lbl">Volumes</span>
               </div>
+            ) : (
+              <>
+                <div className="book-stat">
+                  <span className="book-stat-val">{totalRead.toLocaleString()}</span>
+                  <span className="book-stat-lbl">Pages Read</span>
+                </div>
+                <div className="book-stat">
+                  <span className="book-stat-val">{sessions.length}</span>
+                  <span className="book-stat-lbl">Sessions</span>
+                </div>
+                {book.total_pages && (
+                  <div className="book-stat">
+                    <span className="book-stat-val">{book.total_pages.toLocaleString()}</span>
+                    <span className="book-stat-lbl">Total Pages</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       )}
 
-      <div className="sessions-section">
-        <div className="section-header">
-          <h2>Reading Sessions</h2>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowSessionForm(!showSessionForm)}>
-            {showSessionForm ? 'Cancel' : '+ Log Session'}
-          </button>
-        </div>
-
-        {showSessionForm && (
-          <div className="session-form card">
-            <h3>Log Reading Session</h3>
-            {sessionError && <div className="error-message">{sessionError}</div>}
-            <form onSubmit={handleAddSession}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Date</label>
-                  <input type="date" name="date" value={session.date}
-                    onChange={handleSessionChange} required />
-                </div>
-                <div className="form-group" />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>From Page</label>
-                  <input type="number" name="from_page" value={session.from_page}
-                    onChange={handleSessionChange} placeholder="e.g. 1" min="1" required />
-                </div>
-                <div className="form-group">
-                  <label>To Page</label>
-                  <input type="number" name="to_page" value={session.to_page}
-                    onChange={handleSessionChange} placeholder="e.g. 25" min="1" required />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Notes / Beneficial Points</label>
-                <textarea name="notes" value={session.notes} onChange={handleSessionChange}
-                  placeholder="Write any notes, benefits, or key points from today's reading..."
-                  rows="4" />
-              </div>
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary" disabled={sessionLoading}>
-                  {sessionLoading ? 'Saving...' : 'Save Session'}
-                </button>
-              </div>
-            </form>
+      {/* Series: show volumes list */}
+      {volumes.length > 0 && (
+        <div className="sessions-section">
+          <div className="section-header">
+            <h2>Volumes</h2>
           </div>
-        )}
-
-        {sessions.length === 0 ? (
-          <div className="empty-state card">
-            <p>No reading sessions yet. Log your first session to start tracking.</p>
-          </div>
-        ) : (
-          <div className="sessions-list">
-            {sessions.map(s => (
-              <div key={s.id} className="session-card card">
-                <div className="session-card-header">
-                  <div className="session-card-meta">
-                    <span className="session-card-date">{s.date}</span>
-                    <span className="session-card-range">pp. {s.from_page}–{s.to_page}</span>
-                    <span className="session-card-pages badge">{s.pages_read} pages</span>
+          <div className="volumes-list">
+            {volumes.map(vol => {
+              const volPercent = vol.total_pages
+                ? Math.min(100, Math.round((vol.pages_read_total / vol.total_pages) * 100))
+                : null;
+              return (
+                <Link key={vol.id} to={`/books/${vol.id}`} className="volume-card card">
+                  <div className="volume-card-header">
+                    <span className="volume-title">{vol.title}</span>
+                    <span className={`badge status-badge status-${vol.status}`}>
+                      {vol.status.replace('_', ' ')}
+                    </span>
                   </div>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleDeleteSession(s.id)}
-                  >
-                    Delete
+                  {volPercent !== null && (
+                    <div className="volume-progress">
+                      <ProgressBar percent={volPercent} />
+                      <div className="progress-stats">
+                        <span>{vol.pages_read_total} / {vol.total_pages} pages</span>
+                        <span>{volPercent}%</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="volume-meta">
+                    <span>{vol.session_count} session{vol.session_count !== 1 ? 's' : ''}</span>
+                    {vol.total_pages && <span>{vol.total_pages} pages</span>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Standalone or volume: show reading sessions */}
+      {volumes.length === 0 && (
+        <div className="sessions-section">
+          <div className="section-header">
+            <h2>Reading Sessions</h2>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowSessionForm(!showSessionForm)}>
+              {showSessionForm ? 'Cancel' : '+ Log Session'}
+            </button>
+          </div>
+
+          {showSessionForm && (
+            <div className="session-form card">
+              <h3>Log Reading Session</h3>
+              {sessionError && <div className="error-message">{sessionError}</div>}
+              <form onSubmit={handleAddSession}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Date</label>
+                    <input type="date" name="date" value={session.date}
+                      onChange={handleSessionChange} required />
+                  </div>
+                  <div className="form-group" />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>From Page</label>
+                    <input type="number" name="from_page" value={session.from_page}
+                      onChange={handleSessionChange} placeholder="e.g. 1" min="1" required />
+                  </div>
+                  <div className="form-group">
+                    <label>To Page</label>
+                    <input type="number" name="to_page" value={session.to_page}
+                      onChange={handleSessionChange} placeholder="e.g. 25" min="1" required />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Notes / Beneficial Points</label>
+                  <textarea name="notes" value={session.notes} onChange={handleSessionChange}
+                    placeholder="Write any notes, benefits, or key points from today's reading..."
+                    rows="4" />
+                </div>
+                <div className="form-actions">
+                  <button type="submit" className="btn btn-primary" disabled={sessionLoading}>
+                    {sessionLoading ? 'Saving...' : 'Save Session'}
                   </button>
                 </div>
-                {s.notes && (
-                  <div className="session-card-notes">
-                    <strong>Notes:</strong>
-                    <p>{s.notes}</p>
+              </form>
+            </div>
+          )}
+
+          {sessions.length === 0 ? (
+            <div className="empty-state card">
+              <p>No reading sessions yet. Log your first session to start tracking.</p>
+            </div>
+          ) : (
+            <div className="sessions-list">
+              {sessions.map(s => (
+                <div key={s.id} className="session-card card">
+                  <div className="session-card-header">
+                    <div className="session-card-meta">
+                      <span className="session-card-date">{s.date}</span>
+                      <span className="session-card-range">pp. {s.from_page}–{s.to_page}</span>
+                      <span className="session-card-pages badge">{s.pages_read} pages</span>
+                    </div>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDeleteSession(s.id)}>
+                      Delete
+                    </button>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  {s.notes && (
+                    <div className="session-card-notes">
+                      <strong>Notes:</strong>
+                      <p>{s.notes}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

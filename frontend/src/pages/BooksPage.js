@@ -25,20 +25,24 @@ function ProgressBar({ percent }) {
 }
 
 function BookCard({ book }) {
+  const isSeries = book.volume_count > 0;
   const percent = book.total_pages
     ? Math.min(100, Math.round((book.pages_read_total / book.total_pages) * 100))
     : null;
 
   return (
-    <Link to={`/books/${book.id}`} className="book-card card">
+    <Link to={`/books/${book.id}`} className={`book-card card ${isSeries ? 'book-card-series' : ''}`}>
       <div className="book-card-header">
         <div className="book-card-badges">
+          {isSeries && <span className="badge series-badge">📁 {book.volume_count} Volumes</span>}
           {book.topic && <span className="badge topic-badge">{book.topic}</span>}
           {book.language && <span className="badge language-badge">{book.language}</span>}
         </div>
-        <span className={`badge status-badge status-${book.status}`}>
-          {book.status.replace('_', ' ')}
-        </span>
+        {!isSeries && (
+          <span className={`badge status-badge status-${book.status}`}>
+            {book.status.replace('_', ' ')}
+          </span>
+        )}
       </div>
 
       <h3 className="book-card-title">{book.title}</h3>
@@ -51,7 +55,9 @@ function BookCard({ book }) {
       )}
 
       <div className="book-card-footer">
-        {percent !== null ? (
+        {isSeries ? (
+          <p className="series-hint">Click to view all volumes</p>
+        ) : percent !== null ? (
           <div className="book-card-progress">
             <div className="progress-stats">
               <span>{book.pages_read_total} / {book.total_pages} pages</span>
@@ -62,9 +68,11 @@ function BookCard({ book }) {
         ) : (
           <p className="no-pages">No page count set</p>
         )}
-        <div className="session-count">
-          {book.session_count} session{book.session_count !== 1 ? 's' : ''}
-        </div>
+        {!isSeries && (
+          <div className="session-count">
+            {book.session_count} session{book.session_count !== 1 ? 's' : ''}
+          </div>
+        )}
       </div>
     </Link>
   );
