@@ -20,12 +20,39 @@ function NotificationSetup() {
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    setSupported('serviceWorker' in navigator && 'PushManager' in window);
+    const isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
+    setSupported(isSupported);
     setPermission(Notification.permission);
+
     axios.get(`${API}/api/notifications/settings`)
       .then(res => setSettings(res.data.settings))
       .catch(() => {});
-  }, []);
+
+    // If permission already granted, re-sync subscription to backend
+    if (isSupported && Notification.permission === 'granted') {
+      syncSubscription();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const syncSubscription = async () => {
+    try {
+      const { data } = await axios.get(`${API}/api/notifications/vapid-public-key`);
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+        });
+      }
+      await axios.post(`${API}/api/notifications/subscribe`, { subscription: sub });
+      setSubscribed(true);
+    } catch (err) {
+      console.error('Sync subscription error:', err);
+    }
+  };
 
   const subscribe = async () => {
     setLoading(true);
@@ -54,12 +81,14 @@ function NotificationSetup() {
   };
 
   const sendTest = async () => {
-    setStatus('');
+    setStatus('Sending...');
     try {
+      // Make sure subscription is synced before testing
+      await syncSubscription();
       await axios.post(`${API}/api/notifications/test`);
-      setStatus('Test notification sent!');
+      setStatus('Test notification sent! Check your notifications.');
     } catch {
-      setStatus('Failed to send test. Make sure reminders are enabled first.');
+      setStatus('Failed to send test. Try disabling and re-enabling reminders.');
     }
   };
 
@@ -83,6 +112,7 @@ function NotificationSetup() {
       }
       await updateSettings({ enabled: false });
       setSubscribed(false);
+      setPermission('default');
       setStatus('Reminders disabled.');
     } catch {}
   };
@@ -95,6 +125,8 @@ function NotificationSetup() {
     return { value: i, label: `${h}:00 ${ampm}` };
   });
 
+  const isEnabled = permission === 'granted' && subscribed;
+
   return (
     <div className="notification-setup card">
       <div className="notification-header">
@@ -106,9 +138,9 @@ function NotificationSetup() {
 
       {permission === 'denied' ? (
         <div className="error-message">
-          Notifications are blocked in your browser. Enable them in your browser settings to use reminders.
+          Notifications are blocked. Enable them in Chrome → Settings → Privacy → Notifications.
         </div>
-      ) : (permission === 'granted' && subscribed) || (permission === 'granted') ? (
+      ) : isEnabled ? (
         <div className="notification-controls">
           <div className="reminder-time">
             <label>Remind me at</label>
