@@ -41,7 +41,10 @@ async function sendDailyReminders() {
   }
 }
 
-cron.schedule('0 * * * *', sendDailyReminders);
-console.log('Daily reminder scheduler started');
+// Only start the cron job when running as a local server (not on Vercel)
+if (require.main !== module) {
+  cron.schedule('0 * * * *', sendDailyReminders);
+  console.log('Daily reminder scheduler started');
+}
 
 module.exports = { sendDailyReminders };
