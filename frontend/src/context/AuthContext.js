@@ -27,8 +27,18 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = async (email, password) => {
-    const res = await axios.post(`${API_BASE}/api/auth/login`, { email, password });
+  const login = async (emailOrToken, passwordOrUser) => {
+    // Called from settings update: login(token, userObject)
+    if (typeof passwordOrUser === 'object' && passwordOrUser !== null) {
+      const token = emailOrToken;
+      const user = passwordOrUser;
+      localStorage.setItem('maktaba_token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(user);
+      return user;
+    }
+    // Normal login: login(email, password)
+    const res = await axios.post(`${API_BASE}/api/auth/login`, { email: emailOrToken, password: passwordOrUser });
     const { token, user } = res.data;
     localStorage.setItem('maktaba_token', token);
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;

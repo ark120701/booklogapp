@@ -45,6 +45,9 @@ function Navbar() {
             <NavLink to="/analytics" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>
               Analytics
             </NavLink>
+            <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>
+              Settings
+            </NavLink>
             <div className="navbar-user">
               <span className="user-greeting">Salaam, {user.username}</span>
               <button className="btn btn-secondary btn-sm" onClick={handleLogout}>

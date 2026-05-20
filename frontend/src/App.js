@@ -9,6 +9,7 @@ import BooksPage from './pages/BooksPage';
 import BookDetailPage from './pages/BookDetailPage';
 import AddBookPage from './pages/AddBookPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
 import OfflineBanner from './components/OfflineBanner';
 import InstallPrompt from './components/InstallPrompt';
 import './App.css';
@@ -73,6 +74,11 @@ function AppRoutes() {
       <Route path="/analytics" element={
         <PrivateRoute>
           <AppLayout><AnalyticsPage /></AppLayout>
+        </PrivateRoute>
+      } />
+      <Route path="/settings" element={
+        <PrivateRoute>
+          <AppLayout><SettingsPage /></AppLayout>
         </PrivateRoute>
       } />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

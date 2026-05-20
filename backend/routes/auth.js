@@ -71,4 +71,53 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/auth/settings — update username and/or password
+router.put('/settings', authenticateToken, async (req, res) => {
+  const { username, current_password, new_password } = req.body;
+
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // If changing password, verify current password first
+    if (new_password) {
+      if (!current_password)
+        return res.status(400).json({ error: 'Current password is required to set a new password' });
+      if (new_password.length < 6)
+        return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      const valid = await bcrypt.compare(current_password, user.password_hash);
+      if (!valid)
+        return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Check if new username is taken
+    if (username && username !== user.username) {
+      const taken = await pool.query(
+        'SELECT id FROM users WHERE username = $1 AND id != $2',
+        [username, req.user.id]
+      );
+      if (taken.rows.length > 0)
+        return res.status(409).json({ error: 'That username is already taken' });
+    }
+
+    const newUsername = username || user.username;
+    const newHash = new_password ? await bcrypt.hash(new_password, 10) : user.password_hash;
+
+    const updated = await pool.query(
+      'UPDATE users SET username = $1, password_hash = $2 WHERE id = $3 RETURNING id, username, email',
+      [newUsername, newHash, req.user.id]
+    );
+
+    // Issue a new token with updated username
+    const tokenUser = { id: updated.rows[0].id, username: updated.rows[0].username, email: updated.rows[0].email };
+    const token = jwt.sign(tokenUser, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({ user: tokenUser, token });
+  } catch (err) {
+    console.error('Settings error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
